@@ -1,10 +1,12 @@
 const express=require("express");
 const app=express();
 const mongoose=require("mongoose");
-const Listing=require("./models/listing.js");
 const path=require("path");
 const methodOverride=require("method-override");
 const ejsMate=require("ejs-mate");
+const ExpressError=require("./utils/ExpressError.js");
+const listing=require("./routes/listing.js");
+const review=require("./routes/review.js");
 
 main()
 .then((res)=>{
@@ -26,49 +28,25 @@ app.use(express.static(path.join(__dirname,"/public")));
 app.get("/",(req,res)=>{
     res.send("Hi I Am Root");
 })
-//indec route
-app.get("/listing",async(req,res)=>{
-    const allListing=await Listing.find({});
-    res.render("listings/index.ejs",{allListing});
+
+
+
+//listing
+app.use("/listing",listing);
+app.use("/listing/:id/reviews",review);
+
+app.use((req,res,next)=>{
+    next(new ExpressError(404,"Page not found!"));
+});
+
+app.use((err,req,res,next)=>{
+    let {statusCode=500,message="Something Went Wrong"}=err;
+    res.status(statusCode).render("error.ejs",{message});
 })
 
-//create new listing
-
-app.get("/listing/new",(req,res)=>{
-    res.render("listings/new.ejs");
-})
-app.post("/listing",async(req,res)=>{
-    let newlisting =new Listing(req.body.listing);
-    await newlisting.save();
-    res.redirect("/listing");
-})
-
-//show route
-app.get("/listing/:id",async (req,res)=>{
-    let {id}=req.params;
-    let listing=await Listing.findById(id);
-    res.render("listings/show.ejs",{listing});
-})
-
-//edit route
-app.get("/listing/:id/edit",async(req,res)=>{
-     let {id}=req.params;
-    let listing=await Listing.findById(id);
-    res.render("listings/edit.ejs",{listing});
-})
-app.put("/listing/:id",async (req,res)=>{
-    let {id}=req.params;
-    await Listing.findByIdAndUpdate(id,{...req.body.listing});
-    res.redirect("/listing");
-})
-
-//delete route
-app.delete("/listing/:id" ,async(req,res)=>{
-    let {id}=req.params;
-    let deletelist=await Listing.findByIdAndDelete(id);
-    console.log(deletelist);
-    res.redirect("/listing");
-})
+app.listen(8080,()=>{
+    console.log("Listening at 8080");
+})  
 
 // app.get("/testing",async(req,res)=>{
 //     let sampleList=new Listing({
@@ -82,7 +60,3 @@ app.delete("/listing/:id" ,async(req,res)=>{
 //     console.log("Saved sample");
 //     res.send("Successful Test");
 // })
-
-app.listen(8080,()=>{
-    console.log("Listening at 8080");
-})
