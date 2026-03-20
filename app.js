@@ -31,15 +31,7 @@ main()
 .catch(err => console.log(err));
 
 async function main() {
-  if (!dbUrl) {
-    throw new Error("Missing DB_URL in .env");
-  }
-  try {
-    await mongoose.connect(dbUrl);
-  } catch (err) {
-    console.log("MongoDB Atlas connect failed, falling back to local MongoDB:", err.message);
-    await mongoose.connect("mongodb://127.0.0.1:27017/wanderlust");
-  }
+ await mongoose.connect(dbUrl);
 }
 
 
