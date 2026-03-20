@@ -1,3 +1,9 @@
+if(process.env.NODE_ENV != "production"){
+    require("dotenv").config();
+}
+// Avoid printing secrets to console
+
+
 const express=require("express");
 const app=express();
 const mongoose=require("mongoose");
@@ -6,6 +12,7 @@ const methodOverride=require("method-override");
 const ejsMate=require("ejs-mate");
 const ExpressError=require("./utils/ExpressError.js");
 const session=require("express-session");
+const { MongoStore } = require('connect-mongo');
 const flash=require("connect-flash");
 const passport=require("passport");
 const LocalStrategy=require("passport-local")
@@ -15,6 +22,7 @@ const listingRouter=require("./routes/listing.js");
 const reviewRouter=require("./routes/review.js");
 const userRouter=require("./routes/user.js");
 
+const dbUrl = process.env.DB_URL;
 
 main()
 .then((res)=>{
@@ -23,8 +31,17 @@ main()
 .catch(err => console.log(err));
 
 async function main() {
-  await mongoose.connect('mongodb://127.0.0.1:27017/wanderlust');
+  if (!dbUrl) {
+    throw new Error("Missing DB_URL in .env");
+  }
+  try {
+    await mongoose.connect(dbUrl);
+  } catch (err) {
+    console.log("MongoDB Atlas connect failed, falling back to local MongoDB:", err.message);
+    await mongoose.connect("mongodb://127.0.0.1:27017/wanderlust");
+  }
 }
+
 
 app.set("view engine" ,"ejs");
 app.set("views",path.join(__dirname,"views"));
@@ -33,8 +50,20 @@ app.use(methodOverride("_method"));
 app.engine("ejs",ejsMate);
 app.use(express.static(path.join(__dirname,"/public")));
 
+const store=MongoStore.create({
+     mongoUrl:dbUrl,
+     crypto:{
+        secret:process.env.SECREAT,
+     },
+    touchAfter:24*3600,
+})
+ 
+store.on("error",(err)=>{
+    console.log("ERROR in MONGO SESSION STORE",err);
+});
 const sesionOption={
-    secret:"mySecreate",
+    store,
+    secret:process.env.SECREAT,
     resave:false,
     saveUninitialized:true,
     cookie:{
@@ -44,9 +73,8 @@ const sesionOption={
     }
 }
 
-app.get("/",(req,res)=>{
-    res.send("Hi I Am Root");
-})
+
+
 
 app.use(session(sesionOption));
 app.use(flash());
