@@ -31,7 +31,7 @@ main()
 .catch(err => console.log(err));
 
 async function main() {
- await mongoose.connect(dbUrl);
+  await mongoose.connect(dbUrl);
 }
 
 
@@ -45,7 +45,7 @@ app.use(express.static(path.join(__dirname,"/public")));
 const store=MongoStore.create({
      mongoUrl:dbUrl,
      crypto:{
-        secret:process.env.SECREAT,
+        secret:"mySecreate",
      },
     touchAfter:24*3600,
 })
@@ -55,7 +55,7 @@ store.on("error",(err)=>{
 });
 const sesionOption={
     store,
-    secret:process.env.SECREAT,
+    secret:"mySecreate",
     resave:false,
     saveUninitialized:true,
     cookie:{
@@ -99,9 +99,9 @@ app.use((err,req,res,next)=>{
     let {statusCode=500,message="Something Went Wrong"}=err;
     res.status(statusCode).render("error.ejs",{message});
 })
-
-app.listen(8080,()=>{
-    console.log("Listening at 8080");
+const port = process.env.PORT || 8080;
+app.listen(port,()=>{
+    console.log(`Listening at ${port}`);
 })  
 
 // app.get("/testing",async(req,res)=>{
