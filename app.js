@@ -1,3 +1,5 @@
+process.noDeprecation = false;
+
 if(process.env.NODE_ENV != "production"){
     require("dotenv").config();
 }
@@ -12,7 +14,11 @@ const methodOverride=require("method-override");
 const ejsMate=require("ejs-mate");
 const ExpressError=require("./utils/ExpressError.js");
 const session=require("express-session");
-const { MongoStore } = require('connect-mongo');
+const _connectMongo = require('connect-mongo');
+const createMongoStore = _connectMongo.create || (_connectMongo.default && _connectMongo.default.create) || (_connectMongo.MongoStore && _connectMongo.MongoStore.create);
+if (!createMongoStore) {
+  throw new Error('connect-mongo.create() not found. Install a compatible version: npm i connect-mongo@4');
+}
 const flash=require("connect-flash");
 const passport=require("passport");
 const LocalStrategy=require("passport-local")
@@ -38,32 +44,33 @@ async function main() {
 app.set("view engine" ,"ejs");
 app.set("views",path.join(__dirname,"views"));
 app.use(express.urlencoded({extended:true}));
+app.use(express.json());
 app.use(methodOverride("_method"));
 app.engine("ejs",ejsMate);
 app.use(express.static(path.join(__dirname,"/public")));
 
-const store=MongoStore.create({
-     mongoUrl:dbUrl,
-     crypto:{
-        secret:"mySecreate",
-     },
-    touchAfter:24*3600,
-})
+const store = createMongoStore({
+  mongoUrl: dbUrl,
+  crypto: {
+    secret: process.env.SESSION_SECRET || "mySecreate",
+  },
+  touchAfter: 24 * 3600,
+});
  
 store.on("error",(err)=>{
     console.log("ERROR in MONGO SESSION STORE",err);
 });
 const sesionOption={
-    store,
-    secret:"mySecreate",
-    resave:false,
-    saveUninitialized:true,
-    cookie:{
-        expires:Date.now()+7*24*60*60*1000,
-        maxAge:7*24*60*60*1000,
-        httpOnly:true,
-    }
-}
+        store,
+        secret: process.env.SESSION_SECRET || "mySecreate",
+        resave:false,
+        saveUninitialized:true,
+        cookie:{
+        expires: new Date(Date.now()+7*24*60*60*1000),
+         maxAge:7*24*60*60*1000,
+         httpOnly:true,
+     }
+ }
 
 
 
@@ -99,29 +106,8 @@ app.use((err,req,res,next)=>{
     let {statusCode=500,message="Something Went Wrong"}=err;
     res.status(statusCode).render("error.ejs",{message});
 })
-const port = process.env.PORT || 8080;
-app.listen(port,()=>{
-    console.log(`Listening at ${port}`);
-})  
+const port = parseInt(process.env.PORT, 10) || 8080;
+ app.listen(port,()=>{
+     console.log(`Listening at ${port}`);
+ })        
 
-// app.get("/testing",async(req,res)=>{
-//     let sampleList=new Listing({
-//         title:"My New Villa",
-//         description:"by the Beatch",
-//         price:1200,
-//         location:"Goa",
-//         country:"India",
-//     });
-//     await sampleList.save();
-//     console.log("Saved sample");
-//     res.send("Successful Test");
-// })
-// app.get("/registeruser",async(req,res)=>{
-//     let fakeuser=new User({
-//         email:"abc@gmail.com",
-//         username:"abc",
-//     })
-//     let fU=await User.register(fakeuser,"helloworld");
-
-//     res.send(fU);
-// })
